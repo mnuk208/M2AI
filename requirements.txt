@@ -1,0 +1,10 @@
+flask 
+torch 
+transformers 
+nltk 
+numpy
+python-docx 
+pdfplumber 
+python-pptx
+PyPDF2
+textract

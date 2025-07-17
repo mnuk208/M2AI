@@ -1,0 +1,84 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Text Detection</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gauge-container { display: flex; justify-content: space-around; margin-top: 20px; }
+        .verdict-box { text-align: center; font-size: 1.5em; margin-top: 30px; }
+        .toggle-details { margin-top: 20px; text-align: center; }
+        .details { display: none; text-align: center; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <h1 style="text-align:center;">AI vs Human Text Analysis</h1>
+    <form action="/" method="post" enctype="multipart/form-data" style="text-align:center;">
+        <textarea name="input_text" rows="10" cols="80" placeholder="Paste your text here..."></textarea><br><br>
+        <input type="file" name="input_file"><br><br>
+        <input type="checkbox" name="advanced" id="advanced">
+        <label for="advanced">Enable Advanced Analysis (slower)</label><br><br>
+        <button type="submit">Analyze</button>
+    </form>
+
+    {% if result %}
+    <div class="gauge-container">
+        <canvas id="humanGauge" width="200" height="200"></canvas>
+        <canvas id="aiGauge" width="200" height="200"></canvas>
+    </div>
+    <div class="verdict-box">
+        <strong>Verdict:</strong> {{ result.verbal_verdict }}
+    </div>
+    <div class="toggle-details">
+        <button onclick="toggleDetails()">Show/Hide Detailed Metrics</button>
+        <div class="details" id="detailsBox">
+            <p><strong>Perplexity:</strong> {{ result.perplexity }}</p>
+            <p><strong>Entropy:</strong> {{ result.entropy }}</p>
+            <p><strong>Burstiness:</strong> {{ result.burstiness }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <script>
+        function drawGauge(id, label, value) {
+            const ctx = document.getElementById(id).getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: [label, ''],
+                    datasets: [{
+                        data: [value, 100 - value],
+                        backgroundColor: ['#4caf50', '#e0e0e0'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    rotation: -90,
+                    circumference: 180,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false },
+                        title: {
+                            display: true,
+                            text: label + ': ' + value + '%',
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        {% if result %}
+        drawGauge("humanGauge", "Human Likelihood", {{ result.human_likeness }});
+        drawGauge("aiGauge", "AI Likelihood", {{ result.ai_likeness }});
+        {% endif %}
+
+        function toggleDetails() {
+            const box = document.getElementById("detailsBox");
+            box.style.display = box.style.display === "none" ? "block" : "none";
+        }
+    </script>
+</body>
+</html>
