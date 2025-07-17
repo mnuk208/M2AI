@@ -8,7 +8,6 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <script src="https://unpkg.com/@antv/g2plot@2.4.22/dist/g2plot.min.js"></script>
     <style>
       :root {
         --bg-light: #f3f4f6;
@@ -131,7 +130,47 @@
       .gauge-block {
         text-align: center;
         width: 300px;
-        height: 200px;
+        height: 300px;
+        background: radial-gradient(circle at 30% 30%, #333, #111);
+        border-radius: 50%;
+        box-shadow: inset -5px -5px 15px rgba(255, 255, 255, 0.1),
+          inset 5px 5px 15px rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        color: #ffa726;
+        font-weight: bold;
+        font-size: 1.25rem;
+      }
+
+      canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+
+      .gauge-label {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #fff;
+        font-size: 1.2rem;
+        text-align: center;
+      }
+
+      .footer {
+        margin-top: 40px;
+        text-align: center;
+        font-size: 0.9rem;
+        color: #666;
+      }
+
+      .footer img {
+        height: 24px;
+        vertical-align: middle;
+        margin-left: 8px;
       }
     </style>
   </head>
@@ -140,7 +179,7 @@
       🌙
     </button>
     <div class="container">
-      <h1>Let me Help You Detect AI Content</h1>
+      <h1>Analyze the Human or AI Origin of Your Text</h1>
       <form method="post" onsubmit="handleAnalyze(event)">
         <textarea
           id="input_text"
@@ -159,8 +198,21 @@
         <div class="spinner" id="spinner"></div>
       </form>
       <div class="gauge-section" id="gaugeSection">
-        <div class="gauge-block" id="aiGauge"></div>
-        <div class="gauge-block" id="humanGauge"></div>
+        <div class="gauge-block">
+          <canvas id="aiGauge" width="300" height="300"></canvas>
+          <div class="gauge-label">
+            AI Likelihood: <span id="aiValue">0%</span>
+          </div>
+        </div>
+        <div class="gauge-block">
+          <canvas id="humanGauge" width="300" height="300"></canvas>
+          <div class="gauge-label">
+            Human Likelihood: <span id="humanValue">0%</span>
+          </div>
+        </div>
+      </div>
+      <div class="footer">
+        Powered by <img src="/static/logo.png" alt="Logo" />
       </div>
     </div>
 
@@ -195,12 +247,11 @@
         document.getElementById("input_text").value = "";
         hideSpinner();
         gaugeSection.style.display = "none";
-        fileInput.value = ""; // Reset file input label
+        fileInput.value = "";
       }
 
       window.onload = () => {
         applySavedTheme();
-        initGauges();
       };
 
       fileInput.addEventListener("change", handleFileUpload);
@@ -208,9 +259,7 @@
       function handleFileUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
-
         if (file.name.endsWith(".txt")) {
           reader.onload = () => {
             document.getElementById("input_text").value = reader.result;
@@ -221,44 +270,77 @@
         }
       }
 
-      let aiGaugePlot, humanGaugePlot;
+      function drawGauge(canvasId, percent, color) {
+        const canvas = document.getElementById(canvasId);
+        const ctx = canvas.getContext("2d");
+        const radius = canvas.width / 2;
+        const centerX = radius;
+        const centerY = radius;
+        const outerRadius = radius - 20;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      function initGauges() {
-        aiGaugePlot = new G2Plot.Gauge("aiGauge", {
-          percent: 0,
-          range: { color: "#2563eb" },
-          indicator: { pointer: { style: { stroke: "#2563eb" } }, pin: false },
-          axis: { label: null, tickLine: null, subTickLine: null },
-          statistic: {
-            title: { content: "AI Likelihood" },
-            content: { content: "0%" },
-          },
-        });
+        // Outer arc background
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = "#444";
+        ctx.lineWidth = 20;
+        ctx.stroke();
 
-        humanGaugePlot = new G2Plot.Gauge("humanGauge", {
-          percent: 0,
-          range: { color: "#10b981" },
-          indicator: { pointer: { style: { stroke: "#10b981" } }, pin: false },
-          axis: { label: null, tickLine: null, subTickLine: null },
-          statistic: {
-            title: { content: "Human Likelihood" },
-            content: { content: "0%" },
-          },
-        });
+        // Animate gauge arc
+        const targetAngle = percent * 2 * Math.PI;
+        let currentAngle = 0;
+        const animate = () => {
+          if (currentAngle < targetAngle) {
+            currentAngle += 0.05;
+            if (currentAngle > targetAngle) currentAngle = targetAngle;
+            ctx.beginPath();
+            ctx.arc(
+              centerX,
+              centerY,
+              outerRadius,
+              -Math.PI / 2,
+              -Math.PI / 2 + currentAngle
+            );
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 20;
+            ctx.stroke();
+            requestAnimationFrame(animate);
+          }
+        };
+        animate();
 
-        aiGaugePlot.render();
-        humanGaugePlot.render();
+        // Tick marks and labels
+        for (let i = 0; i <= 100; i += 10) {
+          const angle = (i / 100) * 2 * Math.PI - Math.PI / 2;
+          const inner = outerRadius - 12;
+          const outer = outerRadius + 1;
+          const x1 = centerX + inner * Math.cos(angle);
+          const y1 = centerY + inner * Math.sin(angle);
+          const x2 = centerX + outer * Math.cos(angle);
+          const y2 = centerY + outer * Math.sin(angle);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.strokeStyle = "#ccc";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Label
+          const labelX = centerX + (outerRadius - 30) * Math.cos(angle);
+          const labelY = centerY + (outerRadius - 30) * Math.sin(angle);
+          ctx.fillStyle = "#ccc";
+          ctx.font = "12px Inter";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(i.toString(), labelX, labelY);
+        }
       }
 
       function updateGauges(aiPercent, humanPercent) {
-        aiGaugePlot.update({
-          percent: aiPercent / 100,
-          statistic: { content: { content: `${aiPercent}%` } },
-        });
-        humanGaugePlot.update({
-          percent: humanPercent / 100,
-          statistic: { content: { content: `${humanPercent}%` } },
-        });
+        drawGauge("aiGauge", aiPercent / 100, "#dc2626");
+        drawGauge("humanGauge", humanPercent / 100, "#10b981");
+        document.getElementById("aiValue").textContent = aiPercent + "%";
+        document.getElementById("humanValue").textContent = humanPercent + "%";
       }
 
       function handleAnalyze(event) {
@@ -268,7 +350,6 @@
         const inputText = document.getElementById("input_text").value;
         if (!inputText.trim()) return hideSpinner();
 
-        // Simulate backend result fetch
         setTimeout(() => {
           const aiScore = Math.floor(Math.random() * 100);
           const humanScore = 100 - aiScore;
