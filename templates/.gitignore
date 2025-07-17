@@ -1,0 +1,31 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment
+.env
+.venv/
+venv/
+ENV/
+
+# Logs
+*.log
+
+# Databases
+*.sqlite3
+
+# VS Code settings
+.vscode/
+
+# MacOS / Windows system files
+.DS_Store
+Thumbs.db
+
+# Node.js (if you use npm packages or frontend stuff)
+node_modules/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
