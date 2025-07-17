@@ -4,24 +4,11 @@
     <meta charset="UTF-8" />
     <title>AI-Detect by M²AI</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <!-- Theme Flicker Prevention -->
-    <script>
-      (function () {
-        const theme = localStorage.getItem("theme");
-        if (theme === "dark") {
-          document.documentElement.classList.add("dark");
-        }
-      })();
-    </script>
-
-    <!-- Fonts & Plotly -->
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
-
+    <script src="https://unpkg.com/@antv/g2plot@2.4.22/dist/g2plot.min.js"></script>
     <style>
       :root {
         --bg-light: #f3f4f6;
@@ -54,7 +41,9 @@
         padding: 40px;
         border-radius: 12px;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        transition: background-color 0.4s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
       }
 
       html.dark .container {
@@ -66,19 +55,11 @@
         color: var(--accent);
       }
 
-      .logo {
-        width: 100%;
-        max-width: 90px;
-        height: auto;
-        vertical-align: middle;
-      }
-
       .theme-toggle {
         position: absolute;
         top: 20px;
         right: 30px;
         cursor: pointer;
-        font-weight: 600;
         background: transparent;
         border: 2px solid var(--accent);
         border-radius: 20px;
@@ -88,12 +69,20 @@
 
       textarea {
         width: 100%;
+        min-height: 150px;
         padding: 15px;
         font-size: 1rem;
         border-radius: 8px;
         border: 1px solid #ccc;
-        resize: vertical;
-        margin-top: 20px;
+        overflow: auto;
+      }
+
+      .button-group {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 15px;
+        flex-wrap: wrap;
       }
 
       button {
@@ -104,45 +93,14 @@
         border-radius: 6px;
         font-size: 1rem;
         cursor: pointer;
-        margin-top: 15px;
       }
 
-      .error {
-        color: var(--error);
-        margin-top: 15px;
-      }
-
-      .results-layout {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 20px;
-        flex-wrap: nowrap;
-      }
-
-      .metrics-block {
-        flex: 1;
-      }
-
-      .metrics-block h3 {
-        margin-bottom: 12px;
-        color: var(--accent);
-      }
-
-      .metrics-block p {
-        margin: 6px 0;
-      }
-
-      .chart-container {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .plotly-chart {
-        width: 100%;
-        height: 100%;
+      input[type="file"] {
+        background: none;
+        color: inherit;
+        border: none;
+        font-family: inherit;
+        padding: 0;
       }
 
       .spinner {
@@ -161,6 +119,20 @@
           transform: rotate(360deg);
         }
       }
+
+      .gauge-section {
+        display: none;
+        justify-content: center;
+        gap: 40px;
+        margin-top: 30px;
+        flex-wrap: wrap;
+      }
+
+      .gauge-block {
+        text-align: center;
+        width: 300px;
+        height: 200px;
+      }
     </style>
   </head>
   <body>
@@ -168,117 +140,35 @@
       🌙
     </button>
     <div class="container">
-      <h1>
-        <img src="/static/logo.png" alt="Logo of M²AI" class="logo" />
-        Let me Help You Detect AI Content
-      </h1>
-
-      <form method="post" onsubmit="showSpinner()">
+      <h1>Let me Help You Detect AI Content</h1>
+      <form method="post" onsubmit="handleAnalyze(event)">
         <textarea
+          id="input_text"
           name="input_text"
-          rows="8"
           placeholder="Paste text here..."
         ></textarea>
-        <button type="submit">Analyze Text</button>
-        <button
-          type="button"
-          onclick="recalibrate()"
-          style="margin-left: 10px; background-color: #6b7280"
-        >
-          Recalibrate
-        </button>
+        <div class="button-group">
+          <button type="submit">Analyze Text</button>
+          <button type="button" onclick="recalibrate()">Recalibrate</button>
+          <input
+            type="file"
+            id="fileInput"
+            accept=".txt,.doc,.docx,.pdf,.ppt,.pptx"
+          />
+        </div>
         <div class="spinner" id="spinner"></div>
       </form>
-
-      {% if result %} {% if result.error %}
-      <p class="error">{{ result.error }}</p>
-      {% else %}
-      <div class="results-layout">
-        <div class="metrics-block">
-          <h3>AI Likelihood</h3>
-          <p><strong>Perplexity:</strong> {{ result.perplexity }}</p>
-          <p><strong>Burstiness:</strong> {{ result.burstiness }}</p>
-          <p><strong>Entropy:</strong> {{ result.entropy }}</p>
-          <p>
-            <strong>AI Generated:</strong> {{ result.ai_likelihood_percent }}%
-          </p>
-          <p>
-            <strong>Human Generated:</strong> {{ 100 -
-            result.ai_likelihood_percent }}%
-          </p>
-        </div>
-        <div class="chart-container">
-          <div
-            id="aiPieChart"
-            class="plotly-chart"
-            style="max-width: 250px; max-height: 250px; margin-top: 0px"
-          ></div>
-        </div>
+      <div class="gauge-section" id="gaugeSection">
+        <div class="gauge-block" id="aiGauge"></div>
+        <div class="gauge-block" id="humanGauge"></div>
       </div>
-
-      <div class="chart-container" style="margin-top: 40px">
-        <div id="metricsBarChart" class="plotly-chart"></div>
-      </div>
-
-      <script>
-        document.addEventListener('DOMContentLoaded', function () {
-          const aiPercent = {{ result.ai_likelihood_percent|tojson }};
-          const humanPercent = 100 - aiPercent;
-
-          Plotly.newPlot('aiPieChart', [{
-            values: [aiPercent, humanPercent],
-            labels: ['AI Generated', 'Human Written'],
-            type: 'pie',
-            hole: 0.35,
-            textinfo: 'label+percent',
-            textposition: 'inside',
-            marker: {
-              colors: ['#ef4444', '#10b981']
-            }
-          }], {
-            title: 'AI Likelihood',
-            showlegend: false,
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            font: { color: getComputedStyle(document.body).color },
-            margin: { t: 30, b: 0, l: 0, r: 0 }
-          });
-
-          Plotly.newPlot('metricsBarChart', [{
-            x: ['Perplexity', 'Burstiness', 'Entropy', 'AI %', 'Human %'],
-            y: [
-              {{ result.perplexity }},
-              {{ result.burstiness }},
-              {{ result.entropy }},
-              {{ result.ai_likelihood_percent }},
-              {{ 100 - result.ai_likelihood_percent }}
-            ],
-            type: 'bar',
-            marker: {
-              color: ['#3b82f6', '#6366f1', '#10b981', '#ef4444', '#10b981']
-            },
-            text: [
-              {{ result.perplexity }},
-              {{ result.burstiness }},
-              {{ result.entropy }},
-              {{ result.ai_likelihood_percent }},
-              {{ 100 - result.ai_likelihood_percent }}
-            ],
-            textposition: 'auto'
-          }], {
-            title: 'Text Complexity Metrics',
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            font: { color: getComputedStyle(document.body).color }
-          });
-        });
-      </script>
-      {% endif %} {% endif %}
     </div>
 
     <script>
       const toggleBtn = document.getElementById("theme-toggle");
       const spinner = document.getElementById("spinner");
+      const gaugeSection = document.getElementById("gaugeSection");
+      const fileInput = document.getElementById("fileInput");
 
       function applySavedTheme() {
         const theme = localStorage.getItem("theme");
@@ -293,31 +183,100 @@
         toggleBtn.textContent = isDark ? "🌙" : "🌞";
       }
 
-      function recalibrate() {
-        // Clear text area
-        const textarea = document.querySelector('textarea[name="input_text"]');
-        if (textarea) textarea.value = "";
-
-        // Hide result sections
-        const results = document.querySelectorAll(
-          ".results-layout, .chart-container"
-        );
-        results.forEach((el) => (el.style.display = "none"));
-
-        // Show loading spinner briefly
-        spinner.style.display = "block";
-
-        // Stop spinner after brief delay to avoid infinite busy state
-        setTimeout(() => {
-          spinner.style.display = "none";
-        }, 1000); // Adjust the delay as needed
-      }
-
       function showSpinner() {
         spinner.style.display = "block";
       }
 
-      window.onload = applySavedTheme;
+      function hideSpinner() {
+        spinner.style.display = "none";
+      }
+
+      function recalibrate() {
+        document.getElementById("input_text").value = "";
+        hideSpinner();
+        gaugeSection.style.display = "none";
+        fileInput.value = ""; // Reset file input label
+      }
+
+      window.onload = () => {
+        applySavedTheme();
+        initGauges();
+      };
+
+      fileInput.addEventListener("change", handleFileUpload);
+
+      function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+
+        if (file.name.endsWith(".txt")) {
+          reader.onload = () => {
+            document.getElementById("input_text").value = reader.result;
+          };
+          reader.readAsText(file);
+        } else {
+          alert("Only .txt supported in this version.");
+        }
+      }
+
+      let aiGaugePlot, humanGaugePlot;
+
+      function initGauges() {
+        aiGaugePlot = new G2Plot.Gauge("aiGauge", {
+          percent: 0,
+          range: { color: "#2563eb" },
+          indicator: { pointer: { style: { stroke: "#2563eb" } }, pin: false },
+          axis: { label: null, tickLine: null, subTickLine: null },
+          statistic: {
+            title: { content: "AI Likelihood" },
+            content: { content: "0%" },
+          },
+        });
+
+        humanGaugePlot = new G2Plot.Gauge("humanGauge", {
+          percent: 0,
+          range: { color: "#10b981" },
+          indicator: { pointer: { style: { stroke: "#10b981" } }, pin: false },
+          axis: { label: null, tickLine: null, subTickLine: null },
+          statistic: {
+            title: { content: "Human Likelihood" },
+            content: { content: "0%" },
+          },
+        });
+
+        aiGaugePlot.render();
+        humanGaugePlot.render();
+      }
+
+      function updateGauges(aiPercent, humanPercent) {
+        aiGaugePlot.update({
+          percent: aiPercent / 100,
+          statistic: { content: { content: `${aiPercent}%` } },
+        });
+        humanGaugePlot.update({
+          percent: humanPercent / 100,
+          statistic: { content: { content: `${humanPercent}%` } },
+        });
+      }
+
+      function handleAnalyze(event) {
+        event.preventDefault();
+        showSpinner();
+
+        const inputText = document.getElementById("input_text").value;
+        if (!inputText.trim()) return hideSpinner();
+
+        // Simulate backend result fetch
+        setTimeout(() => {
+          const aiScore = Math.floor(Math.random() * 100);
+          const humanScore = 100 - aiScore;
+          updateGauges(aiScore, humanScore);
+          gaugeSection.style.display = "flex";
+          hideSpinner();
+        }, 1000);
+      }
     </script>
   </body>
 </html>
