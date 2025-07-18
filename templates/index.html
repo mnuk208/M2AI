@@ -179,7 +179,7 @@
       🌙
     </button>
     <div class="container">
-      <h1>Analyze the Human or AI Origin of Your Text</h1>
+      <h1>AI-CheckMate: Detect AI vs Human Text</h1>
       <form method="post" onsubmit="handleAnalyze(event)">
         <textarea
           id="input_text"
@@ -212,7 +212,8 @@
         </div>
       </div>
       <div class="footer">
-        Powered by <img src="/static/logo.png" alt="Logo" />
+        Powered by AI-CheckMate Team. <br />Copyrights &copy; 2025 reserved for
+        <img src="/static/logo.png" alt="Logo" />
       </div>
     </div>
 
@@ -336,27 +337,42 @@
         }
       }
 
-      function updateGauges(aiPercent, humanPercent) {
-        drawGauge("aiGauge", aiPercent / 100, "#dc2626");
-        drawGauge("humanGauge", humanPercent / 100, "#10b981");
-        document.getElementById("aiValue").textContent = aiPercent + "%";
-        document.getElementById("humanValue").textContent = humanPercent + "%";
-      }
-
-      function handleAnalyze(event) {
+      async function handleAnalyze(event) {
         event.preventDefault();
         showSpinner();
 
         const inputText = document.getElementById("input_text").value;
         if (!inputText.trim()) return hideSpinner();
 
-        setTimeout(() => {
-          const aiScore = Math.floor(Math.random() * 100);
+        try {
+          const response = await fetch("/analyze", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ input_text: inputText }),
+          });
+
+          if (!response.ok) throw new Error("Server error!");
+
+          const data = await response.json();
+          const aiScore = data.ai_likelihood_percent;
           const humanScore = 100 - aiScore;
+
           updateGauges(aiScore, humanScore);
           gaugeSection.style.display = "flex";
+        } catch (error) {
+          alert("Analysis failed: " + error.message);
+        } finally {
           hideSpinner();
-        }, 1000);
+        }
+      }
+
+      function updateGauges(aiPercent, humanPercent) {
+        drawGauge("aiGauge", aiPercent / 100, "#dc2626");
+        drawGauge("humanGauge", humanPercent / 100, "#10b981");
+        document.getElementById("aiValue").textContent = aiPercent + "%";
+        document.getElementById("humanValue").textContent = humanPercent + "%";
       }
     </script>
   </body>

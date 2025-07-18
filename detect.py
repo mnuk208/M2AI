@@ -1,8 +1,4 @@
-# AI-Detect: Web-Based Application (Flask version)
-# App built using Python, Flask, and Bootstrap for the web interface
-
-from flask import Flask, render_template, request
-import os
+from flask import Flask, render_template, request, jsonify
 import math
 import nltk
 import torch
@@ -10,26 +6,29 @@ import numpy as np
 from collections import Counter
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-# Ensure nltk punkt is available
 nltk.download('punkt')
 
-# Load DistilGPT2 model
+# Load language model
 tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
 model = AutoModelForCausalLM.from_pretrained("distilgpt2")
 model.eval()
 
 app = Flask(__name__)
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    result = None
-    if request.method == 'POST':
-        text = request.form.get('input_text', '').strip()
-        if not text:
-            result = {'error': 'Please enter some text.'}
-        else:
-            result = ai_detection_analysis(text)
-    return render_template('index.html', result=result)
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    data = request.get_json()
+    text = data.get('input_text', '').strip()
+
+    if not text:
+        return jsonify({'error': 'No text provided'}), 400
+
+    result = ai_detection_analysis(text)
+    return jsonify(result)
 
 def calculate_perplexity(text):
     inputs = tokenizer(text, return_tensors='pt')
@@ -48,7 +47,7 @@ def measure_entropy(text):
     text = text.replace(" ", "")
     freq = Counter(text)
     total = sum(freq.values())
-    entropy = -sum((f/total) * math.log2(f/total) for f in freq.values())
+    entropy = -sum((f / total) * math.log2(f / total) for f in freq.values())
     return round(entropy, 2)
 
 def ai_detection_analysis(text):
@@ -61,7 +60,6 @@ def ai_detection_analysis(text):
     result['burstiness'] = measure_burstiness(text)
     result['entropy'] = measure_entropy(text)
 
-    # Simple scoring
     score = 0
     checks = 0
 
