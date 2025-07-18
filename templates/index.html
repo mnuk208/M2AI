@@ -179,13 +179,17 @@
       🌙
     </button>
     <div class="container">
-      <h1>AI-CheckMate: Detect AI vs Human Text</h1>
+      <h1>Analyze the Human or AI Origin of Your Text</h1>
       <form method="post" onsubmit="handleAnalyze(event)">
         <textarea
           id="input_text"
           name="input_text"
           placeholder="Paste text here..."
         ></textarea>
+        <small style="color: gray; display: block; margin-top: 6px">
+          Tip: For accurate detection, enter at least
+          <strong>100 words</strong>.
+        </small>
         <div class="button-group">
           <button type="submit">Analyze</button>
           <button type="button" onclick="recalibrate()">Reset</button>
@@ -280,14 +284,12 @@
         const outerRadius = radius - 20;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Outer arc background
         ctx.beginPath();
         ctx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
         ctx.strokeStyle = "#444";
         ctx.lineWidth = 20;
         ctx.stroke();
 
-        // Animate gauge arc
         const targetAngle = percent * 2 * Math.PI;
         let currentAngle = 0;
         const animate = () => {
@@ -310,7 +312,6 @@
         };
         animate();
 
-        // Tick marks and labels
         for (let i = 0; i <= 100; i += 10) {
           const angle = (i / 100) * 2 * Math.PI - Math.PI / 2;
           const inner = outerRadius - 12;
@@ -326,7 +327,6 @@
           ctx.lineWidth = 2;
           ctx.stroke();
 
-          // Label
           const labelX = centerX + (outerRadius - 30) * Math.cos(angle);
           const labelY = centerY + (outerRadius - 30) * Math.sin(angle);
           ctx.fillStyle = "#ccc";
@@ -343,6 +343,11 @@
 
         const inputText = document.getElementById("input_text").value;
         if (!inputText.trim()) return hideSpinner();
+
+        const wordCount = inputText.trim().split(/\s+/).length;
+        if (wordCount < 100) {
+          alert("Tip: For better accuracy, please enter at least 100 words.");
+        }
 
         try {
           const response = await fetch("/analyze", {
