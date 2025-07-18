@@ -42,7 +42,7 @@
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
         display: flex;
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
       }
 
       html.dark .container {
@@ -52,6 +52,7 @@
       h1 {
         text-align: center;
         color: var(--accent);
+        margin-bottom: 20px;
       }
 
       .theme-toggle {
@@ -66,6 +67,18 @@
         color: var(--accent);
       }
 
+      .tab-toggle {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      .tab-toggle button.active {
+        background-color: var(--accent);
+        color: white;
+      }
+
       textarea {
         width: 100%;
         min-height: 150px;
@@ -74,6 +87,7 @@
         border-radius: 8px;
         border: 1px solid #ccc;
         overflow: auto;
+        resize: vertical;
       }
 
       .button-group {
@@ -94,12 +108,36 @@
         cursor: pointer;
       }
 
-      input[type="file"] {
+      #afterText {
+        background: #e0ffe0;
+        padding: 20px;
+        border-radius: 6px;
+        margin-top: 50px;
+        white-space: pre-wrap;
+        width: 100%;
+        box-sizing: border-box;
+        display: block;
+      }
+
+      #fileInput {
         background: none;
         color: inherit;
         border: none;
         font-family: inherit;
         padding: 0;
+      }
+
+      .footer {
+        margin-top: 40px;
+        text-align: center;
+        font-size: 0.9rem;
+        color: #666;
+      }
+
+      .footer img {
+        height: 24px;
+        vertical-align: middle;
+        margin-left: 8px;
       }
 
       .spinner {
@@ -159,19 +197,6 @@
         font-size: 1.2rem;
         text-align: center;
       }
-
-      .footer {
-        margin-top: 40px;
-        text-align: center;
-        font-size: 0.9rem;
-        color: #666;
-      }
-
-      .footer img {
-        height: 24px;
-        vertical-align: middle;
-        margin-left: 8px;
-      }
     </style>
   </head>
   <body>
@@ -190,26 +215,16 @@
       </div>
 
       <div id="detect-mode">
-        <form method="post" onsubmit="handleAnalyze(event)">
-          <textarea
-            id="input_text"
-            name="input_text"
-            placeholder="Paste text here..."
-          ></textarea>
-          <div style="margin: 8px 0; color: gray">
-            Word Count: <span id="wordCount">0</span>
-          </div>
-          <div class="button-group">
-            <button type="submit">Analyze</button>
-            <button type="button" onclick="recalibrate()">Reset</button>
-            <input
-              type="file"
-              id="fileInput"
-              accept=".txt,.doc,.docx,.pdf,.ppt,.pptx"
-            />
-          </div>
-          <div class="spinner" id="spinner"></div>
-        </form>
+        <textarea id="input_text" placeholder="Paste text here..."></textarea>
+        <div style="margin: 8px 0; color: gray">
+          Word Count: <span id="wordCount">0</span>
+        </div>
+        <div class="button-group">
+          <button onclick="handleAnalyze(event)">Analyze</button>
+          <button onclick="recalibrate('detect')">Reset</button>
+          <input type="file" id="fileInput" accept=".txt" />
+        </div>
+        <div class="spinner" id="spinner"></div>
       </div>
 
       <div id="humanize-mode" style="display: none">
@@ -225,21 +240,10 @@
         </select>
         <div class="button-group">
           <button onclick="handleHumanize()">Humanize</button>
-          <button onclick="recalibrate()">Reset</button>
+          <button onclick="recalibrate('humanize')">Reset</button>
         </div>
-        <div class="preview-box" style="margin-top: 20px">
-          <h4>Before:</h4>
-          <div
-            id="beforeText"
-            style="background: #eee; padding: 10px; border-radius: 6px"
-          ></div>
-          <h4>After:</h4>
-          <div
-            id="afterText"
-            style="background: #e0ffe0; padding: 10px; border-radius: 6px"
-          ></div>
-          <button onclick="copyToClipboard()">Copy to Clipboard</button>
-        </div>
+        <div id="afterText"></div>
+        <button onclick="copyToClipboard()">Copy to Clipboard</button>
       </div>
 
       <div class="gauge-section" id="gaugeSection">
@@ -256,6 +260,7 @@
           </div>
         </div>
       </div>
+
       <div class="footer">
         Powered by AI-CheckMate Team. <br />Copyrights &copy; 2025 reserved for
         <img src="/static/logo.png" alt="Logo" />
@@ -268,6 +273,12 @@
       const gaugeSection = document.getElementById("gaugeSection");
       const fileInput = document.getElementById("fileInput");
 
+      function toggleTheme() {
+        const isDark = document.documentElement.classList.toggle("dark");
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+        toggleBtn.textContent = isDark ? "🌙" : "🌞";
+      }
+
       function applySavedTheme() {
         const theme = localStorage.getItem("theme");
         const isDark = theme === "dark";
@@ -275,44 +286,73 @@
         toggleBtn.textContent = isDark ? "🌙" : "🌞";
       }
 
-      function toggleTheme() {
-        const isDark = document.documentElement.classList.toggle("dark");
-        localStorage.setItem("theme", isDark ? "dark" : "light");
-        toggleBtn.textContent = isDark ? "🌙" : "🌞";
-      }
-
-      function showSpinner() {
-        spinner.style.display = "block";
-      }
-
-      function hideSpinner() {
-        spinner.style.display = "none";
-      }
-
-      function recalibrate() {
-        document.getElementById("input_text").value = "";
-        hideSpinner();
-        gaugeSection.style.display = "none";
-        fileInput.value = "";
-      }
-
       window.onload = () => {
         applySavedTheme();
+        document
+          .getElementById("input_text")
+          .addEventListener("input", updateWordCount);
       };
 
-      fileInput.addEventListener("change", handleFileUpload);
+      function updateWordCount() {
+        const inputText = document.getElementById("input_text").value.trim();
+        const words = inputText.length > 0 ? inputText.split(/\s+/).length : 0;
+        document.getElementById("wordCount").innerText = words;
+      }
 
-      function handleFileUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        if (file.name.endsWith(".txt")) {
-          reader.onload = () => {
-            document.getElementById("input_text").value = reader.result;
-          };
-          reader.readAsText(file);
+      function switchMode(mode) {
+        document.getElementById("detect-mode").style.display =
+          mode === "detect" ? "block" : "none";
+        document.getElementById("humanize-mode").style.display =
+          mode === "humanize" ? "block" : "none";
+        document
+          .getElementById("tab-detect")
+          .classList.toggle("active", mode === "detect");
+        document
+          .getElementById("tab-humanize")
+          .classList.toggle("active", mode === "humanize");
+      }
+
+      function recalibrate(mode) {
+        if (mode === "detect") {
+          document.getElementById("input_text").value = "";
+          updateWordCount();
+          fileInput.value = "";
+          gaugeSection.style.display = "none";
         } else {
-          alert("Only .txt supported in this version.");
+          document.getElementById("humanize_input").value = "";
+          document.getElementById("afterText").textContent = "";
+        }
+      }
+
+      async function handleAnalyze(event) {
+        event.preventDefault();
+        spinner.style.display = "block";
+
+        const inputText = document.getElementById("input_text").value;
+        if (!inputText.trim()) return (spinner.style.display = "none");
+
+        try {
+          const response = await fetch("/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ input_text: inputText }),
+          });
+
+          if (!response.ok) throw new Error("Server error!");
+
+          const data = await response.json();
+          const aiScore = data.ai_likelihood_percent;
+          const humanScore = 100 - aiScore;
+
+          drawGauge("aiGauge", aiScore / 100, "#dc2626");
+          drawGauge("humanGauge", humanScore / 100, "#10b981");
+          document.getElementById("aiValue").textContent = aiScore + "%";
+          document.getElementById("humanValue").textContent = humanScore + "%";
+          gaugeSection.style.display = "flex";
+        } catch (error) {
+          alert("Analysis failed: " + error.message);
+        } finally {
+          spinner.style.display = "none";
         }
       }
 
@@ -378,99 +418,33 @@
         }
       }
 
-      async function handleAnalyze(event) {
-        event.preventDefault();
-        showSpinner();
-
-        const inputText = document.getElementById("input_text").value;
-        if (!inputText.trim()) return hideSpinner();
-
-        const wordCount = inputText.trim().split(/\s+/).length;
-        if (wordCount < 100) {
-          alert("Tip: For better accuracy, please enter at least 100 words.");
-        }
-
-        try {
-          const response = await fetch("/analyze", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ input_text: inputText }),
-          });
-
-          if (!response.ok) throw new Error("Server error!");
-
-          const data = await response.json();
-          const aiScore = data.ai_likelihood_percent;
-          const humanScore = 100 - aiScore;
-
-          updateGauges(aiScore, humanScore);
-          gaugeSection.style.display = "flex";
-        } catch (error) {
-          alert("Analysis failed: " + error.message);
-        } finally {
-          hideSpinner();
-        }
-      }
-
-      function updateGauges(aiPercent, humanPercent) {
-        drawGauge("aiGauge", aiPercent / 100, "#dc2626");
-        drawGauge("humanGauge", humanPercent / 100, "#10b981");
-        document.getElementById("aiValue").textContent = aiPercent + "%";
-        document.getElementById("humanValue").textContent = humanPercent + "%";
-      }
-    </script>
-
-    <script>
-      function switchMode(mode) {
-        document.getElementById("detect-mode").style.display =
-          mode === "detect" ? "block" : "none";
-        document.getElementById("humanize-mode").style.display =
-          mode === "humanize" ? "block" : "none";
-        document
-          .getElementById("tab-detect")
-          .classList.toggle("active", mode === "detect");
-        document
-          .getElementById("tab-humanize")
-          .classList.toggle("active", mode === "humanize");
-      }
-
-      document.getElementById("input_text").addEventListener("input", () => {
-        const wordCount = document
-          .getElementById("input_text")
-          .value.trim()
-          .split(/\s+/)
-          .filter((w) => w).length;
-        document.getElementById("wordCount").innerText = wordCount;
-      });
-
-      async function handleHumanize() {
+      function handleHumanize() {
         const input = document.getElementById("humanize_input").value.trim();
         const tone = document.getElementById("toneSelect").value;
         if (!input) return alert("Please enter text to humanize.");
-
-        showSpinner();
-        try {
-          const response = await fetch("/humanize", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ input_text: input, tone }),
-          });
-          const result = await response.json();
-          document.getElementById("beforeText").textContent = result.original;
-          document.getElementById("afterText").textContent = result.humanized;
-        } catch (err) {
-          alert("Humanization failed.");
-        } finally {
-          hideSpinner();
-        }
+        document.getElementById(
+          "afterText"
+        ).textContent = `Humanized (${tone}):\n${input}`;
       }
 
       function copyToClipboard() {
         const text = document.getElementById("afterText").textContent;
         navigator.clipboard.writeText(text);
       }
+
+      fileInput.addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (!file || !file.name.endsWith(".txt")) {
+          alert("Only .txt files are supported.");
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          document.getElementById("input_text").value = reader.result;
+          updateWordCount();
+        };
+        reader.readAsText(file);
+      });
     </script>
   </body>
 </html>
