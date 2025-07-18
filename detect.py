@@ -6,7 +6,11 @@ import numpy as np
 from collections import Counter
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-nltk.download('punkt')
+# Ensure necessary NLTK resources are downloaded
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
 
 # Load language model
 tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
