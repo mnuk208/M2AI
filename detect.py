@@ -34,6 +34,29 @@ def analyze():
     result = ai_detection_analysis(text)
     return jsonify(result)
 
+@app.route('/humanize', methods=['POST'])
+def humanize():
+    data = request.get_json()
+    text = data.get('input_text', '').strip()
+    tone = data.get('tone', 'neutral')
+
+    if not text:
+        return jsonify({'error': 'No text provided'}), 400
+
+    # Very basic humanization demo
+    if tone == 'formal':
+        text = text.replace("I'm", "I am").replace("can't", "cannot")
+    elif tone == 'conversational':
+        text = text.replace("do not", "don't").replace("cannot", "can't")
+
+    humanized_text = text.replace("AI", "human")
+
+    return jsonify({
+        'original': data.get('input_text'),
+        'humanized': humanized_text,
+        'tone': tone
+    })
+
 def calculate_perplexity(text):
     inputs = tokenizer(text, return_tensors='pt')
     input_ids = inputs["input_ids"]

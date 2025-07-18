@@ -179,28 +179,69 @@
       🌙
     </button>
     <div class="container">
-      <h1>Analyze the Human or AI Origin of Your Text</h1>
-      <form method="post" onsubmit="handleAnalyze(event)">
+      <h1>From Detection to Perfection - AI to Human Like in Seconds</h1>
+      <div class="tab-toggle">
+        <button onclick="switchMode('detect')" id="tab-detect" class="active">
+          Detect AI
+        </button>
+        <button onclick="switchMode('humanize')" id="tab-humanize">
+          Humanize Text
+        </button>
+      </div>
+
+      <div id="detect-mode">
+        <form method="post" onsubmit="handleAnalyze(event)">
+          <textarea
+            id="input_text"
+            name="input_text"
+            placeholder="Paste text here..."
+          ></textarea>
+          <div style="margin: 8px 0; color: gray">
+            Word Count: <span id="wordCount">0</span>
+          </div>
+          <div class="button-group">
+            <button type="submit">Analyze</button>
+            <button type="button" onclick="recalibrate()">Reset</button>
+            <input
+              type="file"
+              id="fileInput"
+              accept=".txt,.doc,.docx,.pdf,.ppt,.pptx"
+            />
+          </div>
+          <div class="spinner" id="spinner"></div>
+        </form>
+      </div>
+
+      <div id="humanize-mode" style="display: none">
         <textarea
-          id="input_text"
-          name="input_text"
-          placeholder="Paste text here..."
+          id="humanize_input"
+          placeholder="Enter text to humanize..."
         ></textarea>
-        <small style="color: gray; display: block; margin-top: 6px">
-          Tip: For accurate detection, enter at least
-          <strong>100 words</strong>.
-        </small>
+        <label for="toneSelect">Select Tone:</label>
+        <select id="toneSelect">
+          <option value="neutral">Neutral</option>
+          <option value="formal">Formal</option>
+          <option value="conversational">Conversational</option>
+        </select>
         <div class="button-group">
-          <button type="submit">Analyze</button>
-          <button type="button" onclick="recalibrate()">Reset</button>
-          <input
-            type="file"
-            id="fileInput"
-            accept=".txt,.doc,.docx,.pdf,.ppt,.pptx"
-          />
+          <button onclick="handleHumanize()">Humanize</button>
+          <button onclick="recalibrate()">Reset</button>
         </div>
-        <div class="spinner" id="spinner"></div>
-      </form>
+        <div class="preview-box" style="margin-top: 20px">
+          <h4>Before:</h4>
+          <div
+            id="beforeText"
+            style="background: #eee; padding: 10px; border-radius: 6px"
+          ></div>
+          <h4>After:</h4>
+          <div
+            id="afterText"
+            style="background: #e0ffe0; padding: 10px; border-radius: 6px"
+          ></div>
+          <button onclick="copyToClipboard()">Copy to Clipboard</button>
+        </div>
+      </div>
+
       <div class="gauge-section" id="gaugeSection">
         <div class="gauge-block">
           <canvas id="aiGauge" width="300" height="300"></canvas>
@@ -378,6 +419,57 @@
         drawGauge("humanGauge", humanPercent / 100, "#10b981");
         document.getElementById("aiValue").textContent = aiPercent + "%";
         document.getElementById("humanValue").textContent = humanPercent + "%";
+      }
+    </script>
+
+    <script>
+      function switchMode(mode) {
+        document.getElementById("detect-mode").style.display =
+          mode === "detect" ? "block" : "none";
+        document.getElementById("humanize-mode").style.display =
+          mode === "humanize" ? "block" : "none";
+        document
+          .getElementById("tab-detect")
+          .classList.toggle("active", mode === "detect");
+        document
+          .getElementById("tab-humanize")
+          .classList.toggle("active", mode === "humanize");
+      }
+
+      document.getElementById("input_text").addEventListener("input", () => {
+        const wordCount = document
+          .getElementById("input_text")
+          .value.trim()
+          .split(/\s+/)
+          .filter((w) => w).length;
+        document.getElementById("wordCount").innerText = wordCount;
+      });
+
+      async function handleHumanize() {
+        const input = document.getElementById("humanize_input").value.trim();
+        const tone = document.getElementById("toneSelect").value;
+        if (!input) return alert("Please enter text to humanize.");
+
+        showSpinner();
+        try {
+          const response = await fetch("/humanize", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ input_text: input, tone }),
+          });
+          const result = await response.json();
+          document.getElementById("beforeText").textContent = result.original;
+          document.getElementById("afterText").textContent = result.humanized;
+        } catch (err) {
+          alert("Humanization failed.");
+        } finally {
+          hideSpinner();
+        }
+      }
+
+      function copyToClipboard() {
+        const text = document.getElementById("afterText").textContent;
+        navigator.clipboard.writeText(text);
       }
     </script>
   </body>
