@@ -109,10 +109,10 @@
       }
 
       #afterText {
-        background: #e0ffe0;
+        background: #adf9ad;
         padding: 20px;
         border-radius: 6px;
-        margin-top: 50px;
+        margin-top: 80px;
         white-space: pre-wrap;
         width: 100%;
         box-sizing: border-box;
@@ -125,6 +125,18 @@
         border: none;
         font-family: inherit;
         padding: 0;
+        margin-top: 10px;
+        text-align: center;
+      }
+
+      #toneSelect {
+        background: #205ddf;
+        color: inherit;
+        border: none;
+        font-family: inherit;
+        padding: 0;
+        margin-top: 15px;
+        text-align: center;
       }
 
       .footer {
@@ -197,6 +209,15 @@
         font-size: 1.2rem;
         text-align: center;
       }
+      .tone-container {
+        position: relative;
+        display: inline-block; /* Adjust if needed */
+      }
+
+      .tone-container label {
+        position: relative;
+        top: 3px; /* Increase this value to move label further down */
+      }
     </style>
   </head>
   <body>
@@ -232,15 +253,20 @@
           id="humanize_input"
           placeholder="Enter text to humanize..."
         ></textarea>
-        <label for="toneSelect">Select Tone:</label>
-        <select id="toneSelect">
-          <option value="neutral">Neutral</option>
-          <option value="formal">Formal</option>
-          <option value="conversational">Conversational</option>
-        </select>
+        <div style="margin: 8px 0; color: gray">
+          Word Count: <span id="wordCountHumanize">0</span>
+        </div>
         <div class="button-group">
           <button onclick="handleHumanize()">Humanize</button>
           <button onclick="recalibrate('humanize')">Reset</button>
+          <div class="tone-container">
+            <label for="toneSelect">Select Tone:</label>
+            <select id="toneSelect">
+              <option value="neutral">Neutral</option>
+              <option value="formal">Formal</option>
+              <option value="conversational">Conversational</option>
+            </select>
+          </div>
         </div>
         <div id="afterText"></div>
         <button onclick="copyToClipboard()">Copy to Clipboard</button>
@@ -291,12 +317,23 @@
         document
           .getElementById("input_text")
           .addEventListener("input", updateWordCount);
+        document
+          .getElementById("humanize_input")
+          .addEventListener("input", updateWordCountHumanize);
       };
 
       function updateWordCount() {
         const inputText = document.getElementById("input_text").value.trim();
         const words = inputText.length > 0 ? inputText.split(/\s+/).length : 0;
         document.getElementById("wordCount").innerText = words;
+      }
+
+      function updateWordCountHumanize() {
+        const inputText = document
+          .getElementById("humanize_input")
+          .value.trim();
+        const words = inputText.length > 0 ? inputText.split(/\s+/).length : 0;
+        document.getElementById("wordCountHumanize").innerText = words;
       }
 
       function switchMode(mode) {
@@ -321,6 +358,7 @@
         } else {
           document.getElementById("humanize_input").value = "";
           document.getElementById("afterText").textContent = "";
+          updateWordCountHumanize();
         }
       }
 
